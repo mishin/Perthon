@@ -398,6 +398,7 @@ primary : atom (call | attributeref | subscription
     )(s?)
 {
     my $ends = $item[2];
+
     #print STDERR Dumper(\%item);
     my $atom = $item{atom}->{perl};
         
@@ -407,7 +408,6 @@ primary : atom (call | attributeref | subscription
     }
     for(my $n=0; $n<@$ends; $n++) {
         my $end = $$ends[$n];
-        my $next = $$ends[$n+1];
         if(&def($$end{type}) eq 'call') {
             if($n == 0) {
                 # this might be either function call or a constructor.
@@ -419,14 +419,8 @@ primary : atom (call | attributeref | subscription
 	    }
         }
         elsif(&def($$end{type}) eq 'attributeref') {
-            if(&def($$next{type}) eq 'call') {
-                $perl = "$perl" . "->$$end{perl}" . $$next{perl};
-                $n++;
-            }
-            else {
-                $perl = "$perl" . "->{" . $$end{perl} . "}";
-            }
-        }
+            $perl = "[$perl->$$end{perl}]";
+	}
         elsif(&def($$end{type}) eq 'subscription') {
             $perl = "$perl->$$end{perl}";
 	}
@@ -447,7 +441,8 @@ primary : atom (call | attributeref | subscription
 # note: conversion from left-recursive to right-recursive
 attributeref : "." identifier
 {
-    {perl => $item{identifier}->{perl}, type => 'attributeref'}
+    my $perl = "->{" . $item{identifier}->{perl} . "}";
+    {perl => $perl}
 }
 
 ## subscription ::= 
@@ -479,10 +474,8 @@ slicing :
 # note: conversion to right-recursive
 simple_slicing : "[" short_slice "]"
 {
-    # note: In Python x[a..b] excludes x[b].
-    #       In Perl @x[a..b] includes $x[b].
     my $perl = $item{short_slice}->{lower}{perl} . ".."
-        . $item{short_slice}->{upper}{perl} . " - 1";
+        . $item{short_slice}->{upper}{perl};
 
     {perl => $perl}
 }
@@ -881,7 +874,7 @@ simple_stmt :
 #FIX:            | del_stmt
 #                | yield_stmt
 #                | raise_stmt
-               | import_stmt
+#                | import_stmt
 #                | global_stmt
 #                | exec_stmt
               | assignment_stmt
@@ -960,45 +953,14 @@ target : atom (attributeref | subscription
     #print STDERR Dumper(\%item);
     my $atom = $item{atom}->{perl};
     
-    #if(&def($item{atom}->{type}) eq 'identifier') {
-    #    $atom = "\$$atom"
-    #}
-    #elsif(@$ends > 0 && &def($$ends[0]->{type}) eq 'call') {
-    #    $atom = "\&$atom";
-    #}
-
-    my $perl = $atom;
     if(&def($item{atom}->{type}) eq 'identifier') {
-        $perl = "\$$perl";
+        $atom = "\$$atom"
+    }
+    elsif(@$ends > 0 && &def($$ends[0]->{type}) eq 'call') {
+        $atom = "\&$atom";
     }
 
-    for(my $n=0; $n<@$ends; $n++) {
-        my $end = $$ends[$n];
-        my $next = $$ends[$n+1];
-        if(&def($$end{type}) eq 'call') {
-            if($n == 0) {
-                # this might be either function call or a constructor.
-                # since we don't know, will mark to for later correction.
-                $perl = "__defer_call_$atom$$end{perl}";
-	    }
-            else {
-                $perl = "$perl->$$end{perl}";
-	    }
-        }
-        elsif(&def($$end{type}) eq 'attributeref') {
-            if(&def($$next{type}) eq 'call') {
-                $perl = "$perl" . "->$$end{perl}" . $$next{perl};
-                $n++;
-            }
-            else {
-                $perl = "$perl" . "->{" . $$end{perl} . "}";
-            }
-        }
-        elsif(&def($$end{type}) eq 'subscription') {
-            $perl = "$perl->$$end{perl}";
-	}
-    }
-
+    my $perl = $atom . join('', map {$$_{perl}} @$ends);
     {perl => $perl}
 }
 
@@ -1051,14 +1013,7 @@ print_stmt :  "print" (
     $_ = $item[1];
     my $exprs = @$_ == 0 ? [] : $$_[0];
 
-    # note: In Python, "print" outputs additional new-line.
-    #       In Perl, "print" does not output an additional new-line.
-
-    # note: In Python, "print" outputs a space between each argument.
-    #       In Perl, "print" does not output a space between each argument.
-
-    my $perl = "print " . join(', " ", ', map "$$_{perl}", @$exprs)
-        . q(, "\n");
+    my $perl = "print " . join(', ', map "$$_{perl}", @$exprs);
 
     {perl => $perl}
 }
@@ -1110,34 +1065,17 @@ continue_stmt : "continue"
 ##                   ( "," identifier ["as" name] )*
 ##                 | "from" module "import" "*"
 
-module_part : module (/as\b/ name)(?)
-identifier_part : identifier (/as\b/ name)(?)
-import_stmt :
-    /import\b/ module_part(s /,/)
-    | /from\b/ module /import\b/ identifier_part(s /,/)
-    | /from\b/ module /import\b/ "*"
-
-{
-    #FIX:don't ignore
-    {perl => ''}
-}
+#FIX:TODO
 
 ## module ::= 
 ##              (identifier ".")* identifier
 
-module : identifier(s /\./)
-
-
 ## global_stmt ::= 
 ##              "global" identifier ("," identifier)*
-
-#FIX:TODO
 
 ## exec_stmt ::= 
 ##              "exec" expression
 ##               ["in" expression ["," expression]]
-
-#FIX:TODO
 
 ## compound_stmt ::= 
 ##              if_stmt
@@ -1201,19 +1139,16 @@ stmt_list : simple_stmt(s /;/) (';')(?) ...NEWLINE
 ##                 ["else" ":" suite]
 
 if_stmt : "if" expression ":" suite
-    ("elif" expression ":" suite
-        {{expression => $item{expression},
-          suite => $item{suite}}}
-    )(s?)
-    ("else" ":" suite)(?)
+                ("elif" expression ":" suite)(s?)
+                ("else" ":" suite)(?)
 {
     my $elifs = $item[5];
     my $else = &optional($item[6]);
     my $perl = "if(" . $item{expression}->{perl} . ") {\n"
         . &indent($item{suite}->{perl}) . "}\n";
     foreach my $elif (@$elifs) {
-        $perl .= "elsif(" . $elif->{expression}->{perl} . ") {\n"
-        . &indent($elif->{suite}->{perl}) . "}\n";
+        $perl .= "elsif(" . $item{expression}->{perl} . ") {\n"
+        . &indent($$elif{perl}) . "}\n";
     }
     if($else) {
         $perl .= "else {\n"
@@ -1415,13 +1350,7 @@ file_input : <skip: $skip_outer>
             $out = "new $name";
 	}
         else {
-            # FIX: major hack.  Is there a generic way to determine
-            # whether the function is called with a '&' prepended to
-            # the name?
-            $out = $name;
-            if($out !~ /^(cos|sin)$/) {
-                $out = "\&$name";
-	    }
+            $out = "\&$name";
 	}
         $out;
     }gse;
