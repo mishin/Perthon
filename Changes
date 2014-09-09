@@ -1,0 +1,47 @@
+Changes
+The Perthon Revision history
+
+
+  2003-12-01  David Manura
+
+    * Version 0.1 released.
+	
+    * Moved to SourceForge.
+
+    * Beginning error handling.
+
+    * Rudimentary arrays/slice support.
+
+  2003-11-29  David Manura
+	
+    * Improved lexing (implicit/explicit line continuations), more
+      robust indent handling.
+
+    * Started syntax test suite.
+
+    * Augmented assign statements (e.g. +=)
+
+  2003-11-28  David Manura
+
+    * Rudimentary support for if statements, continue, break, long
+      strings, classes, __init__ method, class attributes, indexed targets,
+      construct calls.
+
+  2003-11-25  David Manura
+
+    * Rudimentary support for hash, floating point, and string
+      literals.  Perl's '&' v.s '$' of identifiers
+
+    * Recognize Pythonic spacing (INDENT / DEDENT lexing). 
+
+  2003-11-24
+
+    * Rudimentary support for function definitions, for, print,
+      assert, function calls, and expression_stmt's
+
+  2003-11-22
+
+    * Created project.
+
+    * Rudimentary support for simple assignments, target_list
+      assignments, simple expressions, while.

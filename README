@@ -1,0 +1,43 @@
+README
+Perthon v.0.1 - Python to Perl language translation
+
+Perthon attempts to translate Python source code into
+human-readable Perl source code.
+
+Refer to http://perthon.sourceforge.net for the latest project information.
+
+(NOTE: This is pre-pre-alpha software.)
+
+Example usage:
+
+  perl perthon.pl ex/test1.py
+
+or (to both translate and run)
+
+  perl perthon.pl ex/test2.py | perl
+
+Features:
+
+- Perthon is a Perl module and is written entirely in Perl 5.x.
+  It is platform independent.
+- Perthon uses the Damian Conway's Parse::RecDescent Perl module
+  (http://search.cpan.org/~dconway/Parse-RecDescent/) for language parsing.
+- Perthon reimplements the Python language as specified in the
+  Python Reference Manual and BNF grammar
+  (http://www.python.org/doc/current/ref/ref.html).
+- Perthon allows Python code to be run on the Perl 5.x interpreter,
+  which is similar to how Jython (www.jython.org) reimplements Python
+  on the JVM, except that Perthon works at the source code (not byte code)
+  level.  Jython is more analogous to the work underway to reimplement
+  Python on the Parrot virtual machine(http://www.parrotcode.org/) that
+  it is to Perthon.
+- Perthon does the reverse of Bridgekeeper
+  (http://www.crazy-compilers.com/bridgekeeper/), which attempts the
+  (much harder) problem of Perl to Python source code machine translation.
+
+Copyright (c) 2003, David Manura. All Rights Reserved.
+This module is free software. It may be used, redistributed
+and/or modified under the same terms as Perl itself.
+Refer to the README file in Perl for details.
+
+David Manura, 2003-11 (http://www.math2.org/david/)
